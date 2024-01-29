@@ -1,0 +1,123 @@
+class PaymentSystem {
+  constructor() {
+    this.accounts = {};
+    this.specialAccounts = {
+      emission: "BY04AKBB36029110100040000000",
+      destruction: "BY04AKBB36029110100040000001",
+    };
+  }
+ //вывести счет эмиссии
+  getEmissionAccount() {
+    return this.specialAccounts.emission;
+  }
+  //вывести счет уничтожения
+  getDestructionAccount() {
+    return this.specialAccounts.destruction;
+  }
+  //функциия  эмиссии на указанный счет
+  emitMoney(account, amount) {
+    if (account in this.accounts) {
+      this.accounts[account] += amount;
+    } else {
+      this.accounts[account] = amount;
+    }
+  }
+  //отправка суммы на уничтожение
+  sendToDestruction(account, amount) {
+    if (account in this.accounts && this.accounts[account] >= amount) {
+      this.accounts[account] -= amount;
+      this.emitMoney(this.getDestructionAccount(), amount);
+    } else {
+      console.log("Недостаточно средств для отправки на уничтожение.");
+    }
+  }
+  generateIBAN() {
+    const prefix = "BY";
+    const alphanumericChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let result = '';
+    for (let i = 0; i < 16; i++) {
+      const randomIndex = Math.floor(Math.random() * alphanumericChars.length);
+      result += alphanumericChars.charAt(randomIndex);
+    }
+    return `${prefix}${result}0000000001`;
+  }
+  //открываем счет
+  openAccount() {
+    const newAccount = this.generateIBAN();
+    this.accounts[newAccount] = 0;
+    return newAccount;
+  }
+
+  transferMoney(sourceAccount, destinationAccount, amount) {
+    if (sourceAccount in this.accounts && destinationAccount in this.accounts && this.accounts[sourceAccount] >= amount) {
+      this.accounts[sourceAccount] -= amount;
+      this.accounts[destinationAccount] += amount;
+    } else {
+      console.log("Невозможно выполнить перевод. Проверьте счета и наличие средств.");
+    }
+  }
+
+  transferMoneyJson(transferInfo) {
+    const { sourceAccount, destinationAccount, amount } = transferInfo;
+    this.transferMoney(sourceAccount, destinationAccount, amount);
+  }
+
+  getAllAccounts() {
+    const allAccounts = { ...this.specialAccounts, ...this.accounts };
+    const accountStatus = {};
+    for (const account in allAccounts) {
+      if (allAccounts[account] > 0) {
+        accountStatus[account] = "активен";
+      } else if (account in this.accounts) {
+        accountStatus[account] = this.accounts[account] > 0 ? "активен" : "заблокирован";
+      }
+    }
+    return { balances: allAccounts, status: accountStatus };
+  }
+}
+
+
+const paymentSystem = new PaymentSystem();
+
+console.log("Специальный счет для эмиссии:", paymentSystem.getEmissionAccount());
+console.log("Специальный счет для уничтожения:", paymentSystem.getDestructionAccount());
+
+paymentSystem.emitMoney(paymentSystem.getEmissionAccount(), 100000);
+console.log("Баланс счета эмиссии после эмиссии:", paymentSystem.getAllAccounts().balances);
+
+const newAccount = paymentSystem.openAccount();
+console.log("Новый открытый счет:", newAccount);
+
+paymentSystem.transferMoney(paymentSystem.getEmissionAccount(), newAccount, 50000);
+console.log("Баланс счета эмиссии после перевода на новый счет:", paymentSystem.getAllAccounts().balances);
+
+paymentSystem.sendToDestruction(newAccount, 20000);
+console.log("Баланс счета уничтожения после отправки на уничтожение:", paymentSystem.getAllAccounts().balances);
+
+const anotherNewAccount = paymentSystem.openAccount();
+console.log("Еще один новый открытый счет:", anotherNewAccount);
+
+const transferInfo = {
+    sourceAccount: newAccount,
+    destinationAccount: anotherNewAccount,
+    amount: 10000,
+};
+paymentSystem.transferMoneyJson(transferInfo);
+console.log("Баланс счетов после перевода между счетами (через JSON):", paymentSystem.getAllAccounts().balances);
+
+console.log("Список всех счетов и их статус:", paymentSystem.getAllAccounts().status);
+
+
+paymentSystem.sendToDestruction("BY99SADSADA00000000000000000003", 5000);
+
+const invalidAccount = paymentSystem.openAccount();
+console.log("Новый открытый счет (некорректный):", invalidAccount);
+
+const invalidTransferInfo = {
+    sourceAccount: "BY99SADSADA00000000000000000003",
+    destinationAccount: anotherNewAccount,
+    amount: "BLALALA",
+};
+paymentSystem.transferMoneyJson(invalidTransferInfo);
+
+
